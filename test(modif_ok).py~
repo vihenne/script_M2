@@ -1,0 +1,118 @@
+from __future__ import division
+from scipy.integrate import quad
+from math import sqrt
+from math import log10
+from math import log
+#import pyfits
+import glob
+import pylab as P
+import numpy as N 
+from scipy.optimize import curve_fit
+import matplotlib.patches as mpatches
+from scipy.optimize import fmin
+from operator import add
+from numpy.linalg import inv
+import sys
+
+#Ouverture du fichier de donnees des 740 supernovae:
+datafile=open('/data/software/jla_likelihood_v6/data/jla_lcparams.txt','r')
+
+#Lecture de la 1ere ligne (noms des colonnes) puis passage a la 2eme:
+dataline=datafile.readline()
+dataline=datafile.readline()
+#   Formation d'une liste composee des elements de la 2eme ligne (1ere supernova) ; "split" separe les donnees des differentes colonnes de la ligne :
+liste=dataline.split()
+#   Listes a representer graphiquement & initialisation des Variables
+zcmb=[]
+mB=[]
+dmB=[]
+X1=[]
+dX1=[]
+C=[]
+dC=[]
+M_stell=[]
+
+c=299792.458
+H=0.000070
+omgM=0.295
+alpha=0.141
+beta=3.101
+M_b=-19.05
+delta_M=-0.070
+
+#Boucle -> remplissage des tableaux de donnees extraites des colonnes du tableau des 740 supernovae
+while dataline != "" :
+#"append" permet d'ajouter un element a la liste a laquelle il est applique (ex: zmcb, mB...), "float" permet de convertir une chaine de nombre (telle que lue dans le tableau des 740 supernovae) et de la convertir en float. 
+	zcmb.append(float(liste[1]))
+	mB.append((float(liste[4])))
+	dmB.append(float(liste[5]))
+	X1.append(float(liste[6]))
+	dX1.append(float(liste[7]))
+	C.append(float(liste[8]))
+	dC.append(float(liste[9]))
+	M_stell.append(float(liste[10]))
+#passage a la ligne suivante du tableau :       
+	dataline=datafile.readline()
+	liste=dataline.split()
+
+#Fonctions
+
+#Fonction donnant les mu theoriques sous forme d'un tableau (fonction de omega_matter et la distance-luminosite)
+def intfun(y,x):
+	return 1/sqrt(((1+y*x)*((1+x)**2))-(1-y)*x*(2+x))
+def fitfundL(z,omgM):
+	MU=[]
+	for i in range (len(z)): 
+	        zz=z[i]
+	        MU.append(dL_z(zz,omgM))
+	return MU  
+
+def dL_z(zz,omgM): 
+	mu_zz = 5*log10((1+zz)*c*(quad(intfun,0,zz,args=(omgM))[0]/(10*H)))
+	return mu_zz  
+
+#Fonction de construction des muexp sous forme d'un tableau (formule du papier de 2014)
+def muexp(mB,X1,C,alpha,beta,M_b,delta_M,M_stell):
+	mu=[]
+	for i in range(len(mB)):
+	        if M_stell[i]<10:
+		       	mu.append(mB[i]-M_b+alpha*X1[i]-beta*C[i])
+		else : 
+		       	mu.append(mB[i]-M_b-delta_M+alpha*X1[i]-beta*C[i])
+	return mu
+
+#Fonction de construction des dmuexp sous forme d'un tableau (formule de propagation des incertitudes)
+def dmuexp(dmB,dX1,dC,alpha,beta):
+	dmu=[]
+	for i in range(len(dmB)):
+	        dmu.append(sqrt(dmB[i]**2+(alpha*dX1[i])**2+(beta*dC[i])**2))
+	return dmu
+
+#Construction des mu et dmu a l'aide des fonctions muexp,dmuexp
+mu=muexp(mB,X1,C,alpha,beta,M_b,delta_M,M_stell)
+dmu=dmuexp(dmB,dX1,dC,alpha,beta)
+
+Pcovar = N.array([[2.84e-4,-1.51e-5,-2.42e-4,1.75e-4,-3.51e-5],[-1.51e-5,4.91e-5,-2.35e-5,9.40e-6,-2.68e-5],[-2.42e-4,-2.35e-5,7.11e-3,3.80e-5,-7.78e-5],[1.75e-4,9.4e-6,3.8e-5,2.07e-4,-1.22e-4],[-3.51e-5,-2.68e-5,-7.78e-5,-1.23e-4,1.76e-4]])
+
+
+##Fonction de construction du Chi2 with the covariance matrix implemented as Betoule et al (2014)
+def chi2(p,z,mB,dmB,X1,dX1,C,dC,M_stell,Pcovar):
+	omgM = p[0]
+	alpha = p[1]
+	beta = p[2]
+	M_b = p[3]
+	delta_M = p[4]
+	chi2tot=0
+
+	for i, zz in enumerate(z):
+	        if M_stell[i]<10:
+	        	mu_z = mB[i]-M_b+alpha*X1[i]-beta*C[i]
+	        else : 
+	        	mu_z = mB[i]-M_b-delta_M+alpha*X1[i]-beta*C[i]
+
+	        #dmu_z = sqrt(dmB[i]**2+(alpha*dX1[i])**2+(beta*dC[i])**2)
+
+	        chi2tot = chi2tot + ( (mu_z-dL_z(zz,omgM))* inv(Pcovar[i][i]) *(mu_z-dL_z(zz,omgM)) )
+
+	return chi2tot
+

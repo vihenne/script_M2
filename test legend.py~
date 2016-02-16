@@ -1,0 +1,62 @@
+from __future__ import division
+from scipy.integrate import quad
+from math import sqrt
+from math import log10
+from math import log
+import pylab as P
+import numpy as N 
+from scipy.optimize import curve_fit
+import matplotlib.patches as mpatches
+from scipy.optimize import fmin
+from operator import add
+from numpy.linalg import inv
+import matplotlib.pyplot as plt
+from astropy.coordinates import SkyCoord
+import astropy.units as u
+from astropy.coordinates import ICRS, Galactic, FK4, FK5
+from astropy.coordinates import Angle, Latitude, Longitude
+import sys
+
+set2=['blue','red','green','yellow']
+
+# Set the random seed for consistency
+N.random.seed(12)
+
+fig, ax = plt.subplots(1)
+
+# Show the whole color range
+for i in range(4):
+    x = N.random.normal(loc=i, size=1000)
+    y = N.random.normal(loc=i, size=1000)
+    color = set2[i]
+    ax.scatter(x, y, label=str(i), alpha=0.5, facecolor=color, linewidth=0.15)
+'''
+# Remove top and right axes lines ("spines")
+spines_to_remove = ['top', 'right']
+for spine in spines_to_remove:
+    ax.spines[spine].set_visible(False)
+
+# Get rid of ticks. The position of the numbers is informative enough of
+# the position of the value.
+ax.xaxis.set_ticks_position('none')
+ax.yaxis.set_ticks_position('none')
+
+# For remaining spines, thin out their line and change the black to a slightly off-black dark grey
+almost_black = '#262626'
+spines_to_keep = ['bottom', 'left']
+for spine in spines_to_keep:
+    ax.spines[spine].set_linewidth(0.5)
+    ax.spines[spine].set_color(almost_black)
+
+# Change the labels to the off-black
+ax.xaxis.label.set_color(almost_black)
+ax.yaxis.label.set_color(almost_black)
+
+# Change the axis title to off-black
+ax.title.set_color(almost_black)
+'''
+ax.legend()
+
+ax.set_title('prettyplotlib `scatter` example\nshowing improved matplotlib `scatter`')
+
+plt.show()
